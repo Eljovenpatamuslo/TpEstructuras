@@ -178,12 +178,23 @@ inRegion p rect | (menorX p rect || mayorX p rect || menorY p rect || mayorY p r
 
 --b)
 ortogonalSearch :: NdTree Punto2d -> Rect -> [Punto2d]
-ortogonalSearch Empty rect           = []
-ortogonalSearch (Node l pt r e) rect | inRegion pt rect = pt:((ortogonalSearch l rect) ++ (ortogonalSearch r rect)) 
-				                     | (e == 0 && (menorX pt rect)) || (e == 1 && (menorY pt rect)) = ortogonalSearch r rect
-                                     | (e == 0 && (mayorX pt rect)) || (e == 1 && (mayorY pt rect)) = ortogonalSearch l rect
-                                     | otherwise = []
-
+ortogonalSearch Empty _ = []
+ortogonalSearch (Node l pt r e) rect = 
+    let 
+        puntosActual = if inRegion pt rect then [pt] else []
+        -- Rango del rectángulo en el eje actual
+        (low, high) = if e == 0 
+                      then (coord 0 (fst rect), coord 0 (snd rect)) -- Eje X
+                      else (coord 1 (fst rect), coord 1 (snd rect)) -- Eje Y
+        valPt = coord e pt
+        
+        -- ¿Debo buscar a la izquierda?
+        searchLeft  = if valPt >= min low high then ortogonalSearch l rect else []
+        -- ¿Debo buscar a la derecha?
+        searchRight = if valPt <= max low high then ortogonalSearch r rect else []
+    in 
+        puntosActual ++ searchLeft ++ searchRight
+		
 --ejemplos (BORRAR)
 x = [P2d (2,3), P2d (5,4), P2d (7,2), P2d (9,6), P2d (4,7), P2d (8,1)]
 y = fromList x
