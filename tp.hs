@@ -127,7 +127,7 @@ eliminar p (Node Empty pt Empty e) | p==pt = Empty
 
 eliminar p (Node l pt Empty e) | p==pt = let max = maximo l e
                                             in (Node (eliminar max l) max Empty e)
-                               | otherwise = (Node (eliminar p l) pt Empty 0)
+                               | otherwise = (Node (eliminar p l) pt Empty e)
 
 eliminar p (Node l pt r@(Node _ ptr _ _) e) | p==pt = let min = minimo r e
                                                                 in (Node l min (eliminar min r) e)
