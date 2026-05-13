@@ -2,7 +2,7 @@
 
 import Data.List
 
-------------------------------------------------------------chatgpteada de ayrton para mostrar NdTree (BORRAR)
+------------------------------------------------------------
 instance Show p => Show (NdTree p) where
     show tree = showTree tree 0
         where
