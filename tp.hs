@@ -92,31 +92,46 @@ insertar p nt = insertarAux p nt 0
                                                     | otherwise = (Node l pt (insertarAux p r (c+1)) e)
 
 ---------------------------------4-----------------------------------------
---Toma Un NdTree p, un eje y devuleve el punto maximo de ese eje 
+maxP :: Punto p => Int -> p -> p -> p
+maxP eje p1 p2 = if coord eje p1 > coord eje p2 then p1 else p2
+
 maximo :: Punto p => NdTree p -> Int -> p
-maximo t@(Node _ p _ _) e = maximoAux t e p
-                          where  
-                                maximoAux (Node Empty pt Empty et) e pMax | e==et && (coord e pt) > (coord e pMax) = pt
-                                                                          | otherwise = pMax
+maximo (Node Empty p Empty _) _ = p
+maximo (Node l p r i) d
+    | i == d = 
+        -- Si el eje coincide, el máximo NO puede estar a la izquierda.
+        -- Está en la derecha o es el punto actual.
+        case r of
+            Empty -> p
+            _     -> maximo r d
+    | otherwise = 
+        let mCurrent = p
+        in case (l, r) of
+            (Empty, _    ) -> maxP d mCurrent (maximo r d)
+            (_,     Empty) -> maxP d mCurrent (maximo l d)
+            (_,     _    ) -> maxP d mCurrent (maxP d (maximo l d) (maximo r d))
+        
+            
+-- Función auxiliar para comparar dos puntos en un eje específico
+minP :: Punto p => Int -> p -> p -> p
+minP eje p1 p2 = if coord eje p1 <= coord eje p2 then p1 else p2
 
-                                maximoAux (Node l pt Empty et) e pMax | e==et && (coord e pt) > (coord e pMax) = maximoAux l e pt
-                                                                      | otherwise = maximoAux l e pMax
-
-                                maximoAux (Node l pt r et) e pMax | e==et && (coord e pt) > (coord e pMax) = maximoAux r e pt
-                                                                  | otherwise = maximoAux r e pMax
-
---Toma Un NdTree p, un eje y devuleve el punto minimo de ese eje 
 minimo :: Punto p => NdTree p -> Int -> p
-minimo t@(Node _ p _ _) e = minimoAux t e p
-                            where
-                                minimoAux (Node Empty pt Empty et) e pMin | e==et && (coord e pt) < (coord e pMin) = pt
-				                                                          | otherwise = pMin
-
-                                minimoAux (Node Empty pt r et) e pMin | e==et && (coord e pt) < (coord e pMin) = minimoAux r e pt
-                                                                      | otherwise = minimoAux r e pMin
-
-                                minimoAux (Node l pt r et) e pMin | e==et && (coord e pt) < (coord e pMin) = minimoAux l e pt
-                                                                  | otherwise = minimoAux l e pMin
+minimo (Node Empty p Empty _) _ = p
+minimo (Node l p r i) d
+    | i == d = 
+        -- CASO ÓPTIMO: El eje coincide.
+        -- Si existe hijo izquierdo, el mínimo ESTÁ ahí. No hace falta mirar p ni r.
+        case l of
+            Empty -> p
+            _     -> minimo l d
+    | otherwise = 
+        -- CASO EXPLORATORIO: El eje no coincide.
+        let mCurrent = p
+        in case (l, r) of
+            (Empty, _    ) -> minP d mCurrent (minimo r d)
+            (_,     Empty) -> minP d mCurrent (minimo l d)
+            (_,     _    ) -> minP d mCurrent (minP d (minimo l d) (minimo r d))
   
 --4)
 eliminar :: (Eq p, Punto p) => p -> NdTree p -> NdTree p
