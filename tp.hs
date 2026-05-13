@@ -68,9 +68,7 @@ sortPuntos xp d = sortBy (\p1 p2 -> compare (coord d p1) (coord d p2)) xp
 --Toma una lista generica y devuelve la mediana de la lista
 --si la lista es par, toma el valor de la derecha
 mediana :: [a] -> a
-mediana (p:[])     = p
-mediana (p1:p2:[]) = p2
-mediana xp         = mediana (reverse (tail (reverse (tail xp))))
+mediana xp = xp !! (length xp `div` 2)
 
 --2)
 fromList :: Punto p => [p] -> NdTree p
