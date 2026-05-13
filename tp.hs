@@ -1,19 +1,9 @@
---ghci -fno-warn-tabs tp.hs
+--Integrantes Lucas Lamberti, Agustin Jaffre
+
 
 import Data.List
 
-------------------------------------------------------------chatgpteada de ayrton para mostrar NdTree (BORRAR)
-instance Show p => Show (NdTree p) where
-    show tree = showTree tree 0
-        where
-            showTree Empty _ = "E"
-            showTree (Node left val right prio) indent =
-                replicate indent ' ' ++ "(" ++ show val ++ "," ++ show prio ++ ")\n" ++
-                replicate indent ' ' ++ "├─ left: " ++ showTree left (indent + 4) ++ "\n" ++
-                replicate indent ' ' ++ "└─ right: " ++ showTree right (indent + 4)
--------------------------------------------------------------
-
-data NdTree p = Empty | Node (NdTree p) p (NdTree p) Int deriving (Eq,Ord)
+data NdTree p = Empty | Node (NdTree p) p (NdTree p) Int deriving (Eq,Ord,Show)
 
 class Punto p where
     dimension :: p -> Int
@@ -68,20 +58,17 @@ sortPuntos xp d = sortBy (\p1 p2 -> compare (coord d p1) (coord d p2)) xp
 --Toma una lista generica y devuelve la mediana de la lista
 --si la lista es par, toma el valor de la derecha
 mediana :: [a] -> a
-mediana (p:[])     = p
-mediana (p1:p2:[]) = p2
-mediana xp         = mediana (reverse (tail (reverse (tail xp))))
+mediana xp = xp !! (length xp `div` 2)
 
 --2)
 fromList :: Punto p => [p] -> NdTree p
-fromList xp = fromListAux xp 0
-              where
-                    fromListAux [] _     = Empty
-                    fromListAux (p:xp) l = let 
-                                            pmed = mediana (sortPuntos (p:xp) (mod l (dimension p)))
-                                            izq = (fromListAux (minimoMediana (p:xp) pmed (mod l (dimension p)) ) (l+1))
-                                            der = (fromListAux (maximoMediana (p:xp) pmed (mod l (dimension p))) (l+1))
-                                          in (Node izq pmed der (mod l (dimension p)))     
+fromList xp = fromListAux xp 0 where
+    fromListAux [] _     = Empty
+    fromListAux (p:xp) l = 
+        let pmed = mediana (sortPuntos (p:xp) (mod l (dimension p)))
+            izq = (fromListAux (minimoMediana (p:xp) pmed (mod l (dimension p)) ) (l+1))
+            der = (fromListAux (maximoMediana (p:xp) pmed (mod l (dimension p))) (l+1))
+        in (Node izq pmed der (mod l (dimension p)))     
 
 
 ---------------------------------3---------------------------------------
@@ -94,53 +81,67 @@ insertar p nt = insertarAux p nt 0
                                                     | otherwise = (Node l pt (insertarAux p r (c+1)) e)
 
 ---------------------------------4-----------------------------------------
---Toma Un NdTree p, un eje y devuleve el punto maximo de ese eje 
+
+--Toma un eje y dos puntos y devuelve el mayor entre ellos en el eje especificado
+maxP :: Punto p => Int -> p -> p -> p
+maxP eje p1 p2 = if coord eje p1 > coord eje p2 then p1 else p2
+
+--Toma un eje y dos puntos y devuelve el menor entre ellos en el eje especificado
+minP :: Punto p => Int -> p -> p -> p
+minP eje p1 p2 = if coord eje p1 <= coord eje p2 then p1 else p2
+
+--Toma un NdTree, un eje y devuelve el mayor punto de ese eje  
 maximo :: Punto p => NdTree p -> Int -> p
-maximo t@(Node _ p _ _) e = maximoAux t e p
-                          where  
-                                maximoAux (Node Empty pt Empty et) e pMax | e==et && (coord e pt) > (coord e pMax) = pt
-                                                                          | otherwise = pMax
+maximo (Node Empty p Empty _) _ = p
+maximo (Node l p r i) d
+    | i == d = 
+        case r of
+            Empty -> p
+            _     -> maximo r d
 
-                                maximoAux (Node l pt Empty et) e pMax | e==et && (coord e pt) > (coord e pMax) = maximoAux l e pt
-                                                                      | otherwise = maximoAux l e pMax
+    | otherwise = 
+        let mCurrent = p
+        in case (l, r) of
+            (Empty, _    ) -> maxP d mCurrent (maximo r d)
+            (_,     Empty) -> maxP d mCurrent (maximo l d)
+            (_,     _    ) -> maxP d mCurrent (maxP d (maximo l d) (maximo r d))
+        
 
-                                maximoAux (Node l pt r et) e pMax | e==et && (coord e pt) > (coord e pMax) = maximoAux r e pt
-                                                                  | otherwise = maximoAux r e pMax
-
---Toma Un NdTree p, un eje y devuleve el punto minimo de ese eje 
+--Toma un NdTree, un eje y devuelve el menor punto de ese eje  
 minimo :: Punto p => NdTree p -> Int -> p
-minimo t@(Node _ p _ _) e = minimoAux t e p
-                            where
-                                minimoAux (Node Empty pt Empty et) e pMin | e==et && (coord e pt) < (coord e pMin) = pt
-				                                                          | otherwise = pMin
-
-                                minimoAux (Node Empty pt r et) e pMin | e==et && (coord e pt) < (coord e pMin) = minimoAux r e pt
-                                                                      | otherwise = minimoAux r e pMin
-
-                                minimoAux (Node l pt r et) e pMin | e==et && (coord e pt) < (coord e pMin) = minimoAux l e pt
-                                                                  | otherwise = minimoAux l e pMin
+minimo (Node Empty p Empty _) _ = p
+minimo (Node l p r i) d
+    | i == d = 
+        case l of
+            Empty -> p
+            _     -> minimo l d
+    | otherwise = 
+        let mCurrent = p
+        in case (l, r) of
+            (Empty, _    ) -> minP d mCurrent (minimo r d)
+            (_,     Empty) -> minP d mCurrent (minimo l d)
+            (_,     _    ) -> minP d mCurrent (minP d (minimo l d) (minimo r d))
   
 --4)
 eliminar :: (Eq p, Punto p) => p -> NdTree p -> NdTree p
-eliminar p (Node Empty pt Empty e) | p==pt = Empty
-                                   | otherwise = (Node Empty pt Empty e)
+eliminar p (Node Empty pt Empty e) 
+    | p==pt = Empty
+    | otherwise = (Node Empty pt Empty e)
 
-eliminar p (Node l pt Empty e) | p==pt = let max = maximo l e
-                                            in (Node (eliminar max l) max Empty e)
-                               | otherwise = (Node (eliminar p l) pt Empty e)
+eliminar p (Node l pt Empty e) 
+    | p==pt = let max = maximo l e 
+                in (Node (eliminar max l) max Empty e)
+    | otherwise = (Node (eliminar p l) pt Empty e)
 
-eliminar p (Node l pt r@(Node _ ptr _ _) e) | p==pt = let min = minimo r e
-                                                                in (Node l min (eliminar min r) e)
-                                            | (coord e p) <= (coord e pt) = (Node (eliminar p l) pt r e)
-                                            | otherwise = (Node l pt (eliminar p r) e)
+eliminar p (Node l pt r@(Node _ ptr _ _) e) 
+    | p==pt = let min = minimo r e
+                in (Node l min (eliminar min r) e)
+    | (coord e p) <= (coord e pt) = (Node (eliminar p l) pt r e)
+    | otherwise = (Node l pt (eliminar p r) e)
 
 -------------------------------5--------------------------------
 
 type Rect = (Punto2d, Punto2d)
-
---Constructor de Rect (ver si hay que borrar)
-punto2Rect :: (Punto2d,Punto2d) -> Rect
-punto2Rect (x,y) = (x,y)
 
 --Toma un punto p, un rect r y devuelve si la coord x de p es menor a las dos de r 
 menorX :: Punto2d -> Rect -> Bool
@@ -169,20 +170,4 @@ ortogonalSearch Empty rect           = []
 ortogonalSearch (Node l pt r e) rect | inRegion pt rect = pt:((ortogonalSearch l rect) ++ (ortogonalSearch r rect)) 
 				                     | (e == 0 && (menorX pt rect)) || (e == 1 && (menorY pt rect)) = ortogonalSearch r rect
                                      | (e == 0 && (mayorX pt rect)) || (e == 1 && (mayorY pt rect)) = ortogonalSearch l rect
-                                     | otherwise = []
-
---ejemplos (BORRAR)
-x = [P2d (2,3), P2d (5,4), P2d (7,2), P2d (9,6), P2d (4,7), P2d (8,1)]
-y = fromList x
-z = insertar (P2d (1.0,1.0)) y
-v = eliminar (P2d (1.0,1.0)) z
-
-x1 = punto2Rect (P2d (1.0,1.0),P2d (7.0,7.0))
-y1 = ortogonalSearch y x1
-
-p1 = P2d (0.0,0.0)
-p2 = P2d (2.0,2.0)
-
-pmed = mediana (sortPuntos (x) (mod 0 ((dimension p1) - 1)))
-xpp = deletePunto pmed x
-left = (minimoMediana xpp pmed (mod 0 (dimension p1)) )
+                                     | otherwise = (ortogonalSearch l rect) ++ (ortogonalSearch r rect)
